@@ -1,0 +1,883 @@
+##### A Simulation with synthetic parameters
+##### A1 Introduce the packages
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-darkgrid')
+%matplotlib inline
+from scipy.stats import gamma
+
+import warnings
+from matplotlib import MatplotlibDeprecationWarning
+warnings.filterwarnings("ignore", category=MatplotlibDeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+###### A2 Main production function and engine of the simulation
+
+def pricing(T, a, b, lamb, sigma_g, dt, r, S0, rho):
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import gamma
+    import matplotlib.pyplot as plt
+    plt.style.use('seaborn-darkgrid')
+    %matplotlib inline
+    from scipy.stats import expon
+   
+    def simulate_poisson_process(rate, time_horizon):
+        event_times = []
+        current_time = 0
+        while current_time < time_horizon:
+            # Generate the time until the next event, which follows an exponential distribution
+            time_until_next_event = np.random.exponential(1/rate)
+            current_time += time_until_next_event
+
+            if current_time < time_horizon:
+                event_times.append(current_time)
+        return event_times
+
+    #Parameters
+    lambda_rate = (a * lamb * dt)          # a * lamb Average rate of events per unit time
+    min_step, max_step = 0, 1          # Range for uniformly distributed step heights
+
+    # Simulate the Poisson process
+    # events = simulate_poisson_process(lambda_rate, T, a)
+
+    phi = 1
+    events = [0]*phi
+    for i in range(phi):
+        events[i] = simulate_poisson_process(lambda_rate, T)
+
+    values = [0]*phi
+    CC = [0]*phi
+
+    for i in range(phi):
+        step_heights = np.random.exponential(scale=1/b, size=len(events[i]))
+        scale = (1/b)  # scipy's gamma uses scale = 1 / rate
+        shape = a * dt
+        step_heights = gamma(a * dt, scale=scale).rvs(size=len(events[i]))
+
+        AA = np.sort(step_heights)
+        BB = np.diff(AA)
+        CC[i] = np.insert(BB, 0, AA[0])
+
+    newList = [0]*phi
+    for i in range(phi):    
+        jsize = CC[i]
+        valuet = jsize
+        valuet = np.append(valuet, 0)
+        valuet=np.cumsum(valuet)
+        values[i] = valuet.tolist()
+
+    #Event_Times
+    time_points = [0]*phi
+    for i in range(phi):    
+        d = events[i]
+        rounded_time = np.round(d, 0)
+        rounded_time = rounded_time.astype(int)
+        time_points[i] = rounded_time
+        time_points[i] = np.append(time_points[i], T)
+        CC[i] = time_points[i].tolist()
+
+    n = T
+    Vol1 = [0]*n
+    Vol2 = [0]*n
+    Vol3 = [0]*phi
+    Vol4 = [0]*phi
+    result = [0]*phi
+    Invol = (sigma_g)
+
+    flattened_list1 = sum(values, [])
+    #flattened_list2 = sum(time_points, [])
+
+    newList = [0] * phi
+
+    for p in range(0,phi):
+        time_p = time_points[p]
+        newList[p] = [(x + (150 * p)) for x in time_p]    
+
+    flattened_list2 = sum(newList, [])
+
+    array = np.zeros((phi, T))
+    Vol3 = array
+    for p in range(1,phi):
+        Vol1 = [0]*n
+        Vol2 = [0]*n
+        tryy = values[p]
+        Xy = Vol3[p-1][len(Vol3[p-1])-1]
+        for t in range(len(values[p])):
+            tryye = tryy[t]
+            for s in range(n):
+                time = s
+                Lowkey = Xy * np.exp(-0.01 * s)
+                if time == 0:
+                    Vol3[p][s] = Lowkey
+                elif time > 0: #and time == time_points[p][t]:
+                    Vol3[p][s] = Vol3[0][len(Vol3[0])-1] * np.exp(-i/150 * lamb)
+
+    Vol3 = np.array(Vol3)
+
+    result = []
+    for vol in Vol3:
+        result += vol.tolist()
+    #plt.plot(list(range(n*phi)), result)
+
+    for p in range(0,phi):
+        time_p = time_points[p]
+        newList[p] = [(x + (150 * p)) for x in time_p]    
+
+    flattene__t = sum(newList[1:phi], [])
+    flattene__v = sum(values[1:phi], [])
+
+    for p in range(len(flattene__t)):
+        for t in range(len(result)):
+            if t >= flattene__t[p] and t > 149 and t < flattene__t[p+1]:
+                result[t] = flattene__v[p]
+
+    import math
+    nnp = [0] * phi
+    np = [0] * n
+
+    for t in range(phi):
+        for i in range(n):
+            np[i] = math.exp(-lamb * 1 * dt)            ##Deniz##
+            nnp[t] = np
+    flattene__ex = sum(nnp[:phi], [])
+
+    import pandas as pd
+    pd.set_option('display.max_rows', None)
+    dff = pd.DataFrame(result, columns=['Vol'])
+    dff['Exp'] = flattene__ex
+    dff['Exp'][0:150] = 1
+    dff['New'] = dff['Exp'] * dff['Vol']
+    dff['Exp'] = flattene__ex
+    dff['Exp'][0:150] = 1
+    dff['New'] = dff['Exp'] * dff['Vol']
+
+    for p in range(0,phi):
+        time_p = time_points[p]
+        newList[p] = [(x + (150 * p)) for x in time_p]    
+
+    flattene__t1 = sum(newList[0:phi], [])
+    flattene__v1 = sum(values[0:phi], [])
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_list = []
+    for num in flattene__v:
+        if num not in seen:
+            unique_list.append(num)
+            seen.add(num)
+
+    flattene__v = unique_list
+    flattene__t = list(filter(lambda x: x % 150 != 0, flattene__t))
+    flattene__t = flattene__t + [(phi * n + 1)]
+
+    for p in range(len(flattene__t)):
+        for t in range(len(result)):
+            if t >= flattene__t[p] and t > 149 and t < flattene__t[p+1]:
+                result[t] = flattene__v[p]
+
+    for p in range(0,phi):
+        time_p = time_points[p]
+        newList[p] = [(x + (150 * p)) for x in time_p]    
+
+    flattene__t1 = sum(newList[0:phi], [])
+    flattene__v1 = sum(values[0:phi], [])
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_list = []
+    for num in flattene__v1:
+        if num not in seen:
+            unique_list.append(num)
+            seen.add(num)
+
+    flattene__v1 = unique_list
+    flattene__t1 = list(filter(lambda x: x % 150 != 0, flattene__t1))
+    flattene__t1 = flattene__t1 + [(phi * n + 1)]
+
+    for p in range(len(flattene__t)):
+        for t in range(len(result)):
+            if t >= flattene__t[p] and t > 149 and t < flattene__t[p+1]:
+                result[t] = flattene__v[p]
+    #plt.plot(list(range(n*phi)), result)
+
+    import math
+    nnp = [0] * phi
+    np = [0] * n
+
+    for t in range(phi):
+        for i in range(n):
+            np[i] = math.exp(-lamb * 1 * dt)           ####Deniz####
+            nnp[t] = np
+    flattene__ex = sum(nnp[:phi], [])
+
+    import pandas as pd
+    pd.set_option('display.max_rows', None)
+    dff = pd.DataFrame(result, columns=['Vol'])
+    dff['Exp'] = flattene__ex
+    dff['Exp'][0:150] = 1
+    dff['New'] = dff['Exp'] * dff['Vol']
+
+    dff['Exp'] = flattene__ex
+    dff['Exp'][0:150] = 1
+    dff['New'] = dff['Exp'] * dff['Vol']
+
+    for p in range(0,phi):
+        time_p = time_points[p]
+        newList[p] = [(x + (150 * p)) for x in time_p]    
+
+    flattene__t1 = sum(newList[0:phi], [])
+    flattene__v1 = sum(values[0:phi], [])
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_list = []
+    for num in flattene__v1:
+        if num not in seen:
+            unique_list.append(num)
+            seen.add(num)
+
+    flattene__v1 = unique_list
+    flattene__t1 = list(filter(lambda x: x % 150 != 0, flattene__t1))
+    flattene__t1 = flattene__t1 + [(phi * n + 1)]
+
+    Volvol = [0] * len(result)
+
+    for t in range(len(Volvol)):
+        for p in range(len(flattene__t1)):
+            if t == flattene__t1[p]:
+                tvt = flattene__v1[p]
+                Volvol[t] = tvt * 1
+
+    import numpy as np
+    #torn = np.array(flattene__ex) * np.array(Volvol)
+    torn = 1 * np.array(Volvol)
+
+    for p in range(len(torn)):
+        Volvol[p] = torn[p]
+   
+    Volvol3 = Volvol
+
+    def fill_gaps_with_smaller_value(data):
+        result = data.copy()
+        n = len(result)
+        i = 0
+        while i < n:
+            if result[i] != 0:
+                start = i
+                # Find next non-zero after start
+                j = i + 1
+                while j < n and result[j] == 0:
+                    j += 1
+                if j < n and result[j] != 0:
+                    # Fill between start and j with the smaller of result[start] and result[j]
+                    fill_value = min(result[start], result[j])
+                    for k in range(start + 1, j):
+                        result[k] = fill_value
+                i = j  # continue from next non-zero
+            else:
+                i += 1
+        return result
+
+    filled_data = fill_gaps_with_smaller_value(Volvol)
+
+    def propagate_previous_if_zero(data):
+        result = data.copy()
+        for i in range(1, len(result)):
+            if result[i] == 0 and result[i] < result[i - 1]:
+                result[i] = result[i-1]
+        return result
+
+    filled_data = propagate_previous_if_zero(filled_data)
+    Volvol = filled_data
+    Volvol83 = filled_data
+
+    def closest_higher_number(lst, target):
+        # Filter the list to include only numbers greater than the target
+        greater_numbers = [x for x in lst if x > target]
+
+        # If no numbers are greater than the target, return None
+        if not greater_numbers:
+            return None
+
+        # Return the closest number from the filtered list
+        return min(greater_numbers, key=lambda x: abs(x - target))
+    zero0 = [0] * phi
+    zero1 = [0] * phi
+    # Example usage
+    for t in range(1,phi):
+        numbers = flattene__t1
+        target = 150 * t
+        closest_higher = closest_higher_number(numbers, target)
+        if closest_higher:
+            zero0[t-1] = closest_higher
+            zero1[t-1] = t * 150
+
+    import math
+    nnp = [0] * phi * n
+    for i in range(n * phi):
+        nnp[i] = np.exp(-lamb * 1 * dt)                 ####Deniz####
+    flattene__ex1 = nnp
+
+    import pandas as pd
+    pd.set_option('display.max_rows', None)
+    dff = pd.DataFrame(Volvol, columns=['Vol0'])
+    dff['Exp'] = flattene__ex
+    dff['Exp1'] = flattene__ex1
+    dff['Vol0'][:150] = dff['Vol0'][:150] + Invol
+
+    dff['Vol1'] = dff['Exp'][:150] * dff['Vol0'][:150]
+
+    for i in range(phi):
+        dff['Vol0'][zero1[i]:zero0[i]] = 0        
+
+    ############# Your list
+    Vol_3 = Volvol  # replace with your actual list
+
+    # Find change points
+    change_points = [0] + [i for i in range(1, len(Vol_3)) if Vol_3[i] != Vol_3[i - 1]]
+
+    # Create DataFrame
+    df = pd.DataFrame(index=range(len(Vol_3)))
+
+    # Fill each column
+    for start in change_points:
+        value = Vol_3[start]
+        col_name = f"col_{round(value, 6)}"
+        if col_name not in df.columns:
+            df[col_name] = 0.0
+        df.loc[start:, col_name] = value
+
+    # Assume df is your DataFrame
+    cols = df.columns.tolist()
+
+    for i in range(1, len(cols)):
+        current = cols[i]
+        left_sum = df[cols[:i]].sum(axis=1)  # sum of all previous columns row-wise
+
+        # Only subtract where current column is not zero
+        mask = df[current] != 0
+        df.loc[mask, current] = df.loc[mask, current] - left_sum[mask]
+
+    df_result = df.copy()
+
+    for col in df.columns[1:]:  # skip the first column if you want
+        # Find the first non-zero index in the column
+        non_zero_indices = df_result.index[df_result[col] != 0]
+        if len(non_zero_indices) == 0:
+            continue  # No non-zero values, skip column
+
+        start_idx = non_zero_indices[0]
+        active_length = len(non_zero_indices)  # <-- Length of non-zero portion
+
+        # Create the multiplier series starting at 1 for start_idx, increasing by 1 each row down
+        multiplier = pd.Series(range(1, len(df_result) - start_idx + 1), index=range(start_idx, len(df_result)))
+
+        # Multiply the column values from start_idx onwards by the multiplier, keep zeros zero
+        df_result.loc[start_idx:, col] = df_result.loc[start_idx:, col] * np.exp(-lamb * multiplier * dt * active_length/1) # * multiplier/active_length)
+
+        # Ensure zeros stay zeros
+        df_result.loc[df_result[col] == 0, col] = 0
+
+    # Step 1: Sum across all columns row-wise
+    df_result['total'] = df_result.sum(axis=1)
+
+    # Step 2: Convert the summed column to a list
+    Volvol = df_result['total'].tolist()
+    ############# My list
+   
+    dff['Vol6'] = Volvol
+    dff['Vol2'] = Volvol83
+    dff['Vol3'] = Volvol3
+    dff['Vol4'] = [0] * len(dff)
+
+    for t in range(len(zero0)-1):
+        Cons = dff['Vol1'][zero1[t]-2]
+        dff[zero1[t]:zero1[t+1]-1] = (Cons + dff['Vol0'][zero1[t]:zero1[t+1]-1]) * dff['Exp'][zero1[t]:zero1[t+1]-1]
+   
+    for i in range(len(dff)):
+        if  i== 0:
+            dff['Vol4'].iloc[0] = dff['Vol0'].iloc[0]
+        if  i== 1:
+            dff['Vol4'].iloc[1] = dff['Vol4'].iloc[i-1] * dff['Exp1'].iloc[i-1] + (dff['Vol2'].iloc[i-1] - 0)
+        if  i > 1:
+            dff['Vol4'].iloc[i] = dff['Vol4'].iloc[i-1] * dff['Exp1'].iloc[i-1] + (dff['Vol2'].iloc[i-1] - dff['Vol2'].iloc[i-2])
+
+    sigma = (sigma_g)
+    n = len(dff['Vol1'])
+    timesteps = len(dff['Vol1'])
+    import numpy as np
+    W = np.random.normal(loc=0, scale=1, size = len(dff['Vol1'])) * np.sqrt(dt)
+    win_s = [0] * (len(flattene__v1))
+
+    def separate_and_average_increasing_sequences(lst):
+        if not lst:
+            return []  # In case the list is empty
+        sequences = []
+        current_sequence = [lst[0]]  # Start with the first element
+
+        for i in range(1, len(lst)):
+            if lst[i] > lst[i - 1]:
+                current_sequence.append(lst[i])  # Continue the increasing sequence
+            else:
+                sequences.append(current_sequence)  # Sequence ends, save it
+                current_sequence = [lst[i]]  # Start a new sequence with the current element
+
+        sequences.append(current_sequence)  # Append the last sequence
+
+        # Calculate the average of each sequence
+        averages = [sum(seq) / len(seq) for seq in sequences]
+
+        return sequences, averages
+
+    # Example usage
+    sequences, averages = separate_and_average_increasing_sequences(flattene__v1)
+
+    my_set = []
+    for k in range(len(averages)):
+        ave = averages[k]
+        for i in range(len(sequences[0])):
+            my_set.append(sequences[0][i] - ave)
+    win_s = my_set    
+    asd = np.cumsum(win_s)
+
+    dff['Vol5'] = np.where(dff['Vol3'] != 0, dff['Vol3'] - averages, 0)
+   
+    for i in range(len(dff['Vol3'])):
+        if dff['Vol3'][i] != 0:
+            dff['Vol5'][i] = dff['Vol3'][i] - averages
+        else:
+            dff['Vol5'][i] = 0
+   
+    dff['Vol5'] = np.cumsum(dff['Vol5'])
+   
+    my_ats = []
+    for i in range(len(dff['Vol2'])):
+        my_ats = np.cumsum(dff['Vol2'][i]-averages)
+    my_ats = my_ats.item()
+   
+    Vol_3 = [0] * len(dff['Vol1'])
+   
+    Vol333 = [0] * (len(Vol_3))
+    dff['Vol6'] = dff['Vol2'].expanding().mean()
+    dff['Vol7'] = dff['Vol2'] - dff['Vol6']
+    for i in range(len(dff['Vol1'])):
+        if i == 0:
+            W = np.random.normal(loc=0, scale=1, size = 1) * np.sqrt(dt/len(dff['Vol1']))
+            Vol_3[i] = (-lamb*a*np.log(1-(rho/b))) * dt/len(dff['Vol1']) + (r - (dff['Vol4'][i]**2)/2) * dt/len(dff['Vol1']) + ((dff['Vol4'][i]) * W) + rho * (dff['Vol7'][i])
+        else:
+            W = np.random.normal(loc=0, scale=1,size = 1) * np.sqrt(dt/len(dff['Vol1']))
+            Vol_3[i] = (-lamb*a*np.log(1-(rho/b))) * dt/len(dff['Vol1']) + (r - (dff['Vol4'][i]**2)/2) * dt/len(dff['Vol1']) + ((dff['Vol4'][i]) * W) + rho * (dff['Vol7'][i] - dff['Vol7'][i-1])
+    for i in range(len(Vol_3)):
+            if i == 0:
+                Vol333[i] = (Vol_3[i]) + np.log(S0)
+            else:
+                Vol333[i] = Vol_3[i] + Vol333[i-1]
+
+    dff['Son'] = np.exp(Vol333)
+    return dff
+    
+
+###### A3 Initialize the synthetic parameters 
+
+T = 150
+dt = 1
+r = 0.04
+sigma_g = 0.3
+S0 = 100
+rho = -1
+a = 3
+b = 8.5
+lamb = 0.01
+
+###### A4 Simulation of the background driving Lévy process (BDLP), the OU Process through BDLP, and asset prices 
+###### A4 leverage affect is presented in this code
+
+
+import seaborn as sns
+plt.style.use('seaborn-v0_8-darkgrid')
+aa = pricing(T, a, b, lamb, sigma_g, dt, r, S0, rho)
+plt.figure().set_figwidth(15)
+plt.plot(list(range(len(aa['Son']))), aa['Vol1'], linewidth=0.5)
+plt.figure().set_figwidth(15)
+plt.plot(list(range(len(aa['Son']))), aa['Vol4'], linewidth=0.5)
+plt.figure().set_figwidth(15)
+plt.plot(list(range(len(aa['Son']))), aa['Son'], linewidth=0.5)
+
+
+##### B Simulation with real market data
+###### B1 Initialize the option data from yahoo finance 
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import math
+import numpy as np
+import warnings
+warnings.filterwarnings('ignore')
+# Replace 'AAPL' with the ticker symbol you're interested in
+ticker_symbol = 'AAPL'
+# Create a ticker object
+ticker = yf.Ticker(ticker_symbol)
+options_chain = ticker.option_chain()
+calls = options_chain.calls
+puts = options_chain.puts
+expirations = ticker.options
+print(expirations)
+
+
+
+###### B1 Select expiry date and data manipulation
+
+target_expiry = '2026-07-31'
+#days_to_expiry = 1
+
+# Check if the expiry exists
+if target_expiry in ticker.options:
+    option_chain = ticker.option_chain(target_expiry)
+    calls = option_chain.calls
+    puts = option_chain.puts
+
+columns = [
+    'Quotes',
+    'Description',
+    'Settle',
+    'Days to Expiration',
+    'Strike',
+    'Implied Volatility',
+    'Close',
+    'Flag',
+    'Moneyness',
+    'bid',
+    'bid'
+]
+
+df = pd.DataFrame(columns=columns)
+calls['lastTradeDate'] = calls['lastTradeDate'].dt.tz_localize(None)
+#expiry_date = pd.to_datetime('2026-12-18')
+expiry_date = pd.to_datetime(target_expiry)
+days_to_expiry = (expiry_date - pd.Timestamp.today()).days
+days_to_expiry = days_to_expiry
+days_to_expiry+2
+
+###### B1 Select expiry date and data manipulationn
+calls['Days to Expiration'] = days_to_expiry
+#calls['Days to Expiration'] = 1
+
+hist = ticker.history(period="1d")  # You can also use "5d", "1mo", etc.
+close_price = hist['Close'].iloc[-1]
+calls['Close'] = close_price
+
+df = pd.DataFrame({
+    'Quotes': calls['contractSymbol'],
+    'Description': '',  # leave blank or fill in if you want
+    'Settle': calls['lastPrice'],
+    'Days to Expiration': calls['Days to Expiration'],
+    'Strike': calls['strike'],
+    'Implied Volatility': calls['impliedVolatility'],
+    'Close': calls['Close'],
+    'Flag': 'Call',
+    'Moneyness': calls['inTheMoney'],
+    'Bid': calls['bid'],
+    'Ask': calls['ask']
+})
+Surface1 = df
+
+Surface = pd.concat([Surface1], ignore_index=True)
+#Surface = pd.concat([Surface1, Surface2, Surface3, Surface4, Surface5, Surface6, Surface7, Surface8, Surface9], ignore_index=True)
+Surface = Surface[(Surface['Implied Volatility'].notna()) & (Surface['Implied Volatility'] > 0)]
+Surface = Surface.iloc[:, 2:]
+
+Surface['Days to Expiration'] = (Surface['Days to Expiration']+2) / 365
+Surface = pd.DataFrame(Surface)
+
+condition_call = ((Surface['Flag'] == 'Call') & 
+                  ((Surface['Close'] - Surface['Strike'] > 0.03 * Surface['Close']) |
+                   (Surface['Strike'] - Surface['Close'] > 0.03 * Surface['Close'])))
+
+# Filter out rows that meet the condition
+Surface = Surface[~condition_call]
+Surface = Surface[Surface['Flag'] != 'Put']
+
+S0 = Surface['Close'].to_numpy()
+r = 0.0411
+b = 0.0032
+epsilon = 0.0001
+K = Surface['Strike'].to_numpy()
+T = Surface['Days to Expiration'].to_numpy()
+cm = Surface['Settle'].to_numpy()
+flag = Surface['Flag'].to_numpy()
+v = Surface['Implied Volatility'].to_numpy()
+
+calls = Surface[Surface['Flag'] == 'Call']
+pivoted_calls = calls.pivot_table(
+    index='Days to Expiration',
+    columns='Strike',
+    values='Settle',
+    aggfunc='first'  # if duplicates exist; otherwise 'first' or no aggfunc
+)
+
+pivoted_calls = pivoted_calls.dropna(axis=1, how='any')
+
+market_data = list(zip(
+    Surface['Close'],                   # Spot price (row-specific)
+    Surface['Strike'],                 # Strike
+    Surface['Days to Expiration'],     # Time to expiry
+    Surface['Settle'],                # Premium
+    Surface['Flag'],                  # Call/Put
+    Surface['Implied Volatility'],     # Implied volatility
+    Surface['Bid'],     # Implied volatility
+    Surface['Ask']     # Implied volatility
+))
+
+print(Surface)
+
+
+###### B2 Calibration
+
+
+from functools import partial
+from scipy.integrate import quad
+
+def cf_bns(u, a, b, sigma, r, q, lamb, rho, T, S0):
+    q = 0.0032
+    f = 1j * u * rho - 0.5 * (u**2 + 1j * u) * (1 - np.exp(-lamb * T))
+    ff = 1j * u * rho - 0.5 * (u**2 + 1j * u)
+    
+    # Stabilize complex exponentials
+    safe_lamb = max(lamb, 1e-6)
+    safe_b = max(b, rho + 1e-6)
+    
+    # Avoid direct complex power
+    lamb_term = np.exp(-1j * np.log(safe_lamb))
+    #pow_term = np.exp(-1j * np.log(safe_b - ff))
+    
+    #NN = np.exp(1j * u * (np.log(S0) + (r - q - a * lamb * rho / (safe_b - rho)) * T))
+    NN = np.exp(1j * u * (np.log(S0) + (r - q - a * lamb * rho / (b - rho)) * T))
+    #MM = np.exp(-0.5 * (1/lamb_term) * (u**2 + 1j * u) * (1 - np.exp(-safe_lamb * T)) * sigma**2)
+    MM = np.exp(-0.5 * (1/lamb) * (u**2 + 1j * u) * (1 - np.exp(-lamb * T)) * sigma**2)
+
+    log_arg = (b - f) / (b - 1j * u * rho)
+    #log_arg = np.where(np.real(log_arg) <= 0, 1, log_arg)  # avoid log of negative
+    #RR = np.exp(a * (1/(safe_b - ff)) * (safe_b * np.log(log_arg) + ff * safe_lamb * T))
+    RR = np.exp(a * (1/(b - ff)) * (b * np.log(log_arg) + ff * lamb * T))
+
+    cf = NN * MM * RR
+    return cf
+
+from scipy.integrate import quad
+import numpy as np
+
+def integrand(phi, a, b, sigma, r, q, lamb, rho, T, S0, K):
+    args = (a, b, sigma, r, q, lamb, rho, T, S0)
+    numerator = np.exp(r*T)*cf_bns(phi-1j,*args) - K*cf_bns(phi,*args)
+    #denominator = 1j*phi*K**(1j*phi)
+    denominator = 1j*phi*np.exp(1j*phi*np.log(K))
+    return numerator/denominator
+
+def heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag):
+    args = (a, b, sigma, r, q, lamb, rho, T, S0)
+    P, umax, N = 0, 100, 10000
+    dphi=umax/N #dphi is width
+
+    for i in range(1,N):
+        # rectangular integration
+        phi = dphi * (2*i + 1)/2 # midpoint to calculate height
+        numerator = np.exp(r*T)*cf_bns(phi-1j,*args) - K * cf_bns(phi,*args)
+        #denominator = 1j*phi*np.exp(1j*phi*np.log(K))
+        denominator = 1j*phi*K**(1j*phi)
+        P += dphi * numerator/denominator
+
+    call = np.real((S0 - K*np.exp(-r*T))/2 + P/np.pi)
+    put = call - S0 + K * np.exp(-r * T)
+    return call if flag == 'Call' else put
+
+def heston_price_rec_vector(a, b, sigma, r, q, lamb, rho, T, S0_list, K_list, flag_list):
+    prices = []
+    for S0, K, T, flag in zip(S0_list, K_list, T, flag_list):
+        # Call the original scalar version of heston_price_rec for each option
+        price = heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag)
+        prices.append(price)
+    return np.array(prices)
+
+market_data = list(zip(
+    Surface['Close'],                   # Spot price (row-specific)
+    Surface['Strike'],                 # Strike
+    Surface['Days to Expiration'],     # Time to expiry
+    Surface['Settle'],                # Premium
+    Surface['Flag'],                  # Call/Put
+    Surface['Implied Volatility'],     # Implied volatility
+    Surface['Bid'],     # Implied volatility
+    Surface['Ask']     # Implied volatility
+))
+
+S0 = [data[0] for data in market_data]
+r = 0.0411
+q = 0.0032
+K = [data[1] for data in market_data]
+T = [data[2] for data in market_data]
+P = [data[3] for data in market_data]
+flag = [data[4] for data in market_data]
+Imp = [data[5] for data in market_data]
+
+params = {"rho": {"x0": 0.1, "lbub": [-1,1]},
+          "lamb": {"x0": 0.3, "lbub": [0.01, 10]},
+          "a": {"x0": 0.05, "lbub": [0.01, 10]},
+          "b": {"x0": 0.3, "lbub": [0.01, 20]},
+          "sigma": {"x0": 0.3, "lbub": [0.01, 10]},
+          }
+
+x0 = [param["x0"] for key, param in params.items()]
+bnds = [param["lbub"] for key, param in params.items()]
+
+from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
+
+def SqErr(x):
+    q = 0.0032
+    rho, lamb, a, b, sigma = x
+    computed_prices = heston_price_rec_vector(a, b, sigma, r, q, lamb, rho, T, S0, K, flag)
+    Weights = np.where(np.array(K) > np.array(S0), 3.0, 1.0)  # Penalize OTM calls
+    base_err = np.sum(Weights * (P - computed_prices)**2 / len(P))
+    regularization = 0.01 * np.sum((x - x0)**2)  # Optional Tikhonov regularization
+    return base_err + 0
+
+result = minimize(SqErr, x0, tol = 1e-3, method='SLSQP', options={'maxiter': 1e3}, bounds=bnds) #L-BFGS-B, SLSQP
+result
+
+
+
+###### B3 Parameters are generated
+
+rho = result.x[0]
+lamb = result.x[1]
+a = result.x[2]
+b = result.x[3]
+sigma = result.x[4]
+
+print(a, b, rho, lamb, sigma)
+
+###### B4 Pricing via semi-analytical formula 
+
+for i in range(len(market_data)):
+    S0 = market_data[i][0]
+    K = market_data[i][1]
+    r = 0.0403
+    q = 0.0032
+    T = market_data[i][2]
+    flag = 'Call'
+    k = np.log(K / S0)  # log moneyness
+    VOL_diff = (heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag) - market_data[i][3]) / market_data[i][3]
+    VOL_diff1 = heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag)
+    print(VOL_diff, VOL_diff1, market_data[i][3])
+    
+###### B4 Pricing via semi-analytical formula extended
+
+model_prices = []
+vol_diffs = []
+diffs = []
+for i in range(len(market_data)):
+    S0 = market_data[i][0]
+    K = market_data[i][1]
+    r = 0.0403
+    q = 0.0032
+    T = market_data[i][2]
+    flag = 'Call'
+    k = np.log(K / S0)  # log moneyness
+    vol_diffs.append((heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag) - market_data[i][3]) / market_data[i][3])
+    model_prices.append(heston_price_rec(a, b, sigma, r, q, lamb, rho, T, S0, K, flag))
+    diffs.append(market_data[i][3])
+    
+df123 = pd.DataFrame(columns=[
+    "Model Price", "Market Price", "(Market Price - Model Price) / Market Price"
+])
+
+df123["Model Price"] = model_prices
+df123["(Market Price - Model Price) / Market Price"] = vol_diffs
+df123["Market Price"] = diffs  # optional, redundant but you used it
+df123
+    
+###### B4 Pricing via monte carlo simulation
+
+N = 100000
+ASD = []   # collect rows first (fast)
+rows = []   # collect rows first (fast)
+S0 = market_data[0][0]
+sigma_g = sigma
+r = 0.0411
+
+for i in range(len(market_data)):
+    K = market_data[i][1]
+    MP = market_data[i][3]
+    Bid = market_data[i][6]
+    Ask = market_data[i][7]
+    Vol_3 = [0] * N
+    dt=market_data[0][2]
+
+    for i in range(N):
+        W = np.random.normal(0, 1) * np.sqrt(dt)
+        shape = (a*dt)
+        scale = (1/b)
+        G = np.random.gamma(shape=shape, scale=scale)
+        #Vol_3[i] = S0*np.exp(lamb * dt * (-a*((rho/(b-rho)))) +
+        Vol_3[i] = S0*np.exp(-lamb * 1 * (a*dt*np.log(1-(rho/b))) +         
+            (r - 0.0032 - 0.5 * ((sigma_g+G)*np.exp(-lamb * dt))**2) * dt
+            + ((sigma_g+G)*np.exp(-lamb * dt)) * W
+            + rho * G)
+
+    Vol_3 = np.asarray(Vol_3)
+    payoffs = np.maximum((Vol_3-K), 0)*np.exp(-r*dt) #Simulate results and bounds 
+    Price = np.mean(payoffs)
+    SE = 1.96*np.std(payoffs)/np.sqrt(N)
+    LowerB = Price - SE
+    UpperB = Price + SE
+    ASD_val = ((Price - MP)**2)**0.5 / MP
+    Model = 'BNS'
+    ASD.append({"iteration": i, "K": K, "MarketPrice": MP, "ASD": ASD_val,
+        "Price": Price, "SE": SE, "LowerB": LowerB, "UpperB": UpperB, "Model": "BNS", "Bid": Bid, "Ask": Ask})
+
+ASD2 = pd.DataFrame(ASD)
+
+for i in range(len(market_data)):
+    K = market_data[i][1]
+    MP = market_data[i][3]
+    IV = market_data[i][5]
+    Bid = market_data[i][6]
+    Ask = market_data[i][7]
+
+    def sim_european_call(S_0=275.25, K=265, vol=0.26538820556640624, T_years=0.06027397260273973, r=0.038, MP = MP, n=10**5):
+        sim_S_T = []
+        sim_S_T = S_0 * np.exp((r-0.5*vol**2)*T_years + vol * np.random.normal(loc=0, scale=1, size=n)*np.sqrt(T_years)) #Calculate payoffs
+        payoffs = np.maximum((sim_S_T-K), 0)*np.exp(-r*T_years) #Simulate results and bounds 
+        Price = np.mean(payoffs)
+        SE = 1.96*np.std(payoffs)/np.sqrt(n)
+        LowerB = Price - SE
+        UpperB = Price + SE
+        #ASD_val = (Price - MP) / MP
+        ASD_val = ((Price - MP)**2)**0.5 / MP
+        return ASD_val, Price, SE, LowerB, UpperB
+        #print((Price-MP)/MP, Price, SE, LowerB, UpperB)
+    
+    ASD_val, Price, SE, LowerB, UpperB = sim_european_call(S_0=market_data[0][0], K=K, vol=IV, T_years=market_data[0][2], r=0.0411-0.0032
+                                                           , MP=MP, n=N)
+    Model = 'BS'
+    rows.append({"iteration": len(payoffs), "K": K, "MarketPrice": MP, "ASD": ASD_val, 
+                 "Price": Price, "SE": SE, "LowerB": LowerB, "UpperB": UpperB, "Model": "BS", "Bid": Bid, "Ask": Ask})
+    ASD1 = pd.DataFrame(rows)
+
+ASD = pd.concat([ASD2, ASD1], ignore_index=True)
+
+ASD["InRange"] = (
+    (ASD["Model"] == "BNS") &
+    (ASD["LowerB"] >= ASD["Bid"]) &
+    (ASD["UpperB"] <= ASD["Ask"])
+).map({True: "yes", False: "no"})
+
+# Overlap condition
+ASD['InRange'] = (ASD['LowerB'] <= ASD['Ask']) & (ASD['UpperB'] >= ASD['Bid'])
+
+# Optional: convert to yes/no
+ASD['InRange'] = ASD['InRange'].map({True: 'yes', False: 'no'})
+
+print(ASD)
