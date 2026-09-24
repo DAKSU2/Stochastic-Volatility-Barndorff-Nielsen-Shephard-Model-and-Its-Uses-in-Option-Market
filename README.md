@@ -1,4 +1,4 @@
-# Stochastic Volatility Barndorff-Nielsen-Shephard Model and Its Uses in Option Market
+# Barndorff-Nielsen-Shephard Model and Its Uses in Option Market
 
 In this long code structure, you will find the following applications with real-world data set,
 
